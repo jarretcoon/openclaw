@@ -1,8 +1,46 @@
 import { describe, expect, it } from "vitest";
 import { __testing } from "./web-search.js";
 
-const { inferPerplexityBaseUrlFromApiKey, resolvePerplexityBaseUrl, normalizeFreshness } =
-  __testing;
+const {
+  inferPerplexityBaseUrlFromApiKey,
+  resolvePerplexityBaseUrl,
+  resolvePerplexityModel,
+  normalizeFreshness,
+} = __testing;
+
+describe("web_search perplexity model resolution", () => {
+  it("strips perplexity/ prefix for direct API (env)", () => {
+    expect(resolvePerplexityModel({ model: "perplexity/sonar-pro" }, "perplexity_env")).toBe(
+      "sonar-pro",
+    );
+  });
+
+  it("strips perplexity/ prefix for direct API (config key)", () => {
+    expect(resolvePerplexityModel({ model: "perplexity/sonar-pro" }, "config", "pplx-123")).toBe(
+      "sonar-pro",
+    );
+  });
+
+  it("preserves perplexity/ prefix for OpenRouter (env)", () => {
+    expect(resolvePerplexityModel({ model: "perplexity/sonar-pro" }, "openrouter_env")).toBe(
+      "perplexity/sonar-pro",
+    );
+  });
+
+  it("preserves perplexity/ prefix for OpenRouter (config key)", () => {
+    expect(resolvePerplexityModel({ model: "perplexity/sonar-pro" }, "config", "sk-or-123")).toBe(
+      "perplexity/sonar-pro",
+    );
+  });
+
+  it("uses default model and strips prefix for direct API", () => {
+    expect(resolvePerplexityModel(undefined, "perplexity_env")).toBe("sonar-pro");
+  });
+
+  it("uses default model and preserves prefix for OpenRouter", () => {
+    expect(resolvePerplexityModel(undefined, "openrouter_env")).toBe("perplexity/sonar-pro");
+  });
+});
 
 describe("web_search perplexity baseUrl defaults", () => {
   it("detects a Perplexity key prefix", () => {

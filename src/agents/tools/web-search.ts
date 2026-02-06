@@ -239,12 +239,34 @@ function resolvePerplexityBaseUrl(
   return DEFAULT_PERPLEXITY_BASE_URL;
 }
 
-function resolvePerplexityModel(perplexity?: PerplexityConfig): string {
+function resolvePerplexityModel(
+  perplexity?: PerplexityConfig,
+  apiKeySource: PerplexityApiKeySource = "none",
+  apiKey?: string,
+): string {
   const fromConfig =
     perplexity && "model" in perplexity && typeof perplexity.model === "string"
       ? perplexity.model.trim()
       : "";
-  return fromConfig || DEFAULT_PERPLEXITY_MODEL;
+
+  const model = fromConfig || DEFAULT_PERPLEXITY_MODEL;
+
+  // If using Perplexity direct API (not OpenRouter), strip the "perplexity/" prefix
+  // from the model name if it exists.
+  const baseUrlHint =
+    apiKeySource === "config"
+      ? inferPerplexityBaseUrlFromApiKey(apiKey)
+      : apiKeySource === "perplexity_env"
+        ? "direct"
+        : apiKeySource === "openrouter_env"
+          ? "openrouter"
+          : undefined;
+
+  if (baseUrlHint === "direct" && model.startsWith("perplexity/")) {
+    return model.replace(/^perplexity\//, "");
+  }
+
+  return model;
 }
 
 function resolveSearchCount(value: unknown, fallback: number): number {
@@ -472,7 +494,7 @@ export function createWebSearchTool(options?: {
 
   const description =
     provider === "perplexity"
-      ? "Search the web using Perplexity Sonar (direct or via OpenRouter). Returns AI-synthesized answers with citations from real-time web search."
+      ? "Search the web for real-time information, live data, or current events using Perplexity Sonar. Returns AI-synthesized answers with citations. Use this when you need up-to-date facts or context not in your training data."
       : "Search the web using Brave Search API. Supports region-specific and localized search via country and language parameters. Returns titles, URLs, and snippets for fast research.";
 
   return {
@@ -529,7 +551,11 @@ export function createWebSearchTool(options?: {
           perplexityAuth?.source,
           perplexityAuth?.apiKey,
         ),
-        perplexityModel: resolvePerplexityModel(perplexityConfig),
+        perplexityModel: resolvePerplexityModel(
+          perplexityConfig,
+          perplexityAuth?.source,
+          perplexityAuth?.apiKey,
+        ),
       });
       return jsonResult(result);
     },
@@ -539,5 +565,6 @@ export function createWebSearchTool(options?: {
 export const __testing = {
   inferPerplexityBaseUrlFromApiKey,
   resolvePerplexityBaseUrl,
+  resolvePerplexityModel,
   normalizeFreshness,
 } as const;
